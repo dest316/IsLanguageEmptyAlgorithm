@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Text;
 
 namespace TYAPK
 {
@@ -24,6 +25,10 @@ namespace TYAPK
         {
             this.value = value;
         }
+        public override string ToString()
+        {
+            return value;
+        }
     }
     public class NonTerminal: Symbol
     {
@@ -44,7 +49,16 @@ namespace TYAPK
     {
         public NonTerminal leftExpression { get; set; }
         public List<Symbol> rightExpression { get; set; }
-        public bool correctRule = true;
+        public bool correctRule { get; set; } = true;
+        public override string ToString()
+        {
+            string rightStr = "";
+            foreach (var ch in rightExpression)
+            {
+                rightStr += ch.ToString();
+            }
+            return leftExpression.ToString() + "->" + rightStr;
+        }
         public GrammaticRule(string expr)
         {
             try
@@ -52,7 +66,6 @@ namespace TYAPK
                 var arr = expr.Split("->");
                 if (arr.Length != 2) { throw new ArgumentException("Ошибка: неверный формат правила грамматики"); }
                 leftExpression = (arr[0][0] == '<' && arr[0][arr[0].Length - 1] == '>') ? new NonTerminal(arr[0][1..(arr[0].Length - 1)]) : new NonTerminal(arr[0]);
-                //вместо рэнджа удалять ВСЕ угольные скобочки в примере
                 List<Symbol> list = new List<Symbol>();
                 for (int i = 0; i < arr[1].Length; i++)
                 {
@@ -88,9 +101,7 @@ namespace TYAPK
         }
         
     }
-
-
-    internal class Grammar
+    public class Grammar
     {
         public List<NonTerminal> nonTerminals { get; set; }
         public List<Terminal> terminals { get; set; }
@@ -124,7 +135,8 @@ namespace TYAPK
                     {
                         if (!nonTerminals.Contains(nt) && !terminals.Contains(nt)) //unsafe cast mb
                         {
-                            throw new ArgumentException("Встречен неопознанный символ");
+                            gr.correctRule = false;
+                            throw new ArgumentException("Встречен неопознанный символ в правиле " + gr);
                         }
                     }
                 }
@@ -148,12 +160,9 @@ namespace TYAPK
             { return false; }
             foreach (Symbol symbol in rule.rightExpression)
             {
-                if (terminals.Contains(symbol))
+                if (!terminals.Contains(symbol))
                 {
-                    foreach (Symbol symbol1 in nonTerminals)
-                    {
-                        if (symbol.Equals(symbol1)) { return false; }
-                    }
+                    return false;
                 }
             }
             return true;
@@ -178,8 +187,9 @@ namespace TYAPK
                 foreach (var rule in tempList)
                 {
                     if (rule.rightExpression == null) { continue; }
-                    foreach (var sym in rule.rightExpression)
+                    foreach (var sym in rule.rightExpression)//добавить проверку на нетерминал
                     {
+                        //if (sym is Terminal) continue;
                         foreach (var nonterm in set)
                         {
                             if (nonterm.leftExpression.Equals(sym))
@@ -197,10 +207,7 @@ namespace TYAPK
         }
         public bool isEmptyLanguage()
         {
-            
             HashSet<GrammaticRule> set = GetGoodGrammaticRules(); // создаем множество правил
-            
-            
             foreach (var rule in set)
             {
                 if (rule.leftExpression.Equals(axiom))
@@ -209,6 +216,33 @@ namespace TYAPK
                 }
             }
             return true;
+        }
+        public override string ToString()
+        {
+            StringBuilder result = new(400);
+            result.Append("Нетерминалы: ");
+            StringBuilder buffer = new(100);
+            foreach (NonTerminal nonterm in nonTerminals)
+            {
+                buffer.Append($"{nonterm.ToString()} ");
+            }
+            result.Append($"{buffer.ToString()}\n");
+            buffer.Clear();
+            result.Append("Терминалы: ");
+            foreach (Terminal term in terminals)
+            {
+                buffer.Append($"{term.ToString()} ");
+            }
+            result.Append($"{buffer.ToString()}\n");
+            buffer.Clear();
+            result.Append("Правила: ");
+            foreach (GrammaticRule gr in grammaticRules)
+            {
+                buffer.Append($"{gr.ToString()} ");
+            }
+            result.Append($"{buffer.ToString()}\n");
+            result.Append($"Аксиома: {axiom}");
+            return result.ToString();
         }
     }
 }
